@@ -87,3 +87,4 @@ for (gene in A_sample_data$Target.Name){
   genes_de<-c(genes_de,gene_de)
   }
 }
+barplot(genes_de, names.arg = genes, cex.names=0.8)
