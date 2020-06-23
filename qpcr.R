@@ -1,4 +1,8 @@
-dirPath<-'C:/Users/Changyi.Lin/Documents/bowl'
+library(readxl)
+
+
+
+dirPath<-'/home/joey/Documents/WanYing'
 setwd(dirPath)
 
 tryCatch(
@@ -33,10 +37,10 @@ for (sample_name in row.names(table(newdata[,'Sample.Name']))){
   sample_A<-newdata[newdata$Sample.Name==sample_name,]
   gene_data<-NULL
   for (gene in rownames(table(sample_A$Target.Name))){
-    gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][1,c(2,3,5)])
+    gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][1,c(2,3,5,6)])
   }
-
   new_Ct.Mean_list<-NULL
+  new_Ct.SD_list<-NULL  
   lq_gene<-NULL
   for (gene in rownames(table(sample_A$Target.Name))){
     if (sample_A[sample_A$Target.Name==gene, ]$Ct.Threshold[1]>0.1){
@@ -47,26 +51,31 @@ for (sample_name in row.names(table(newdata[,'Sample.Name']))){
       b<-abs(y-z)
       c<-abs(x-z)
       if (min(c(a,b,c))==a){
-        new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]))/2
-        new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+        new_Ct.Mean<-mean(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1]),as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]))
+        new_Ct.SD<-sd(c(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1]),as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])))
+
       } else if (min(c(a,b,c))==b){
-        new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
-        new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+        new_Ct.Mean<-mean(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]),as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))
+        new_Ct.SD<-sd(c(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]),as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3])))
+
       } else if (min(c(a,b,c))==c){
-        new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
-        new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+        new_Ct.Mean<-mean(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1]),as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))
+        new_Ct.SD<-sd(c(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1]),as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3])))
       }
+      new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+      new_Ct.SD_list<-c(new_Ct.SD_list,new_Ct.SD)
       lq_gene<-c(lq_gene,gene)
     } 
   }
   df<-NULL
   df$new_Ct_table<-data.frame(lq_gene)
-  df<-cbind(df, data.frame(new_Ct.Mean_list))
-  
+  df<-cbind(df, data.frame(new_Ct.Mean_list), data.frame(new_Ct.SD_list))
+
   for (n in 1:nrow(df)){
     for (m in 1:nrow(gene_data)){
       if (gene_data[m,'Target.Name']==df[n,'lq_gene']){
         gene_data[m,'Ct.Mean']<-df[n,'new_Ct.Mean_list']
+        gene_data[m,'Ct.SD']<-df[n,'new_Ct.SD_list']
       }
     }
   }
@@ -77,14 +86,21 @@ for (sample_name in row.names(table(newdata[,'Sample.Name']))){
 
 A_sample_data<-all_sample_data[all_sample_data$Sample.Name=='mu_270 Differ',]
 Crtl_Ct<-A_sample_data[A_sample_data$Target.Name=='GAPDH',]$Ct.Mean
+Crtl_Ct.SD<-A_sample_data[A_sample_data$Target.Name=='GAPDH',]$Ct.SD
 genes<-NULL
 genes_de<-NULL
 for (gene in A_sample_data$Target.Name){
   if (gene!='GAPDH'){
-  Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
-  gene_de<-2^(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
-  genes<-c(genes,gene)
-  genes_de<-c(genes_de,gene_de)
+    Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
+    Gene_Ct.SD<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.SD
+    gene_de<-2^(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
+    genes<-c(genes,gene)
+    genes_de<-c(genes_de,gene_de)
   }
 }
+
+barCenters <- barplot(height = genes_de,
+                      main = 'mu_270 Differ',names.arg = genes, cex.names=0.8)
+arrows(barCenters, Ymeans12stdev$mean-Ymeans12stdev$sd,
+       barCenters, Ymeans12stdev$mean+Ymeans12stdev$sd,angle=90,code=3)
 barplot(genes_de, names.arg = genes, cex.names=0.8)
