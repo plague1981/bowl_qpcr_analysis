@@ -1,6 +1,7 @@
 library(readxl)
 
 dirPath<-'/home/joey/Documents/WanYing'
+
 setwd(dirPath)
 
 tryCatch(
@@ -91,8 +92,8 @@ for (sample_name in row.names(table(all_sample_data$Sample.Name))){
       genes<-c(genes,gene)
       genes_dCt<-c(genes_dCt,gene_dCt)
     }
-  relative_sample_data<-data.frame(rep(sample_name,length(genes)))
-  relative_sample_data<-cbind(relative_sample_data, genes, genes_dCt)
+    relative_sample_data<-data.frame(rep(sample_name,length(genes)))
+    relative_sample_data<-cbind(relative_sample_data, genes, genes_dCt)
   }
   relative_samples_data<-rbind(relative_samples_data,relative_sample_data)
 }
@@ -140,13 +141,37 @@ for (n in 1:nrow(relative_samples_data)){
 exprs<-2^-ddCt_list
 relative_samples_data$ddCt<-ddCt_list
 relative_samples_data$exprs<-exprs
-wt_undiff<-NULL
+
 
 wt_undiffs<-wt_diffs<-mu_undiffs<-mu_diffs<-NULL
+# wt_undiffs group
 for (n in 1:nrow(relative_samples_data[relative_samples_data$Target.Name=='BSP',])){
   if (grepl('^wt', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n]) & grepl('Undiffer$', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n])){
     wt_undiff<-relative_samples_data[relative_samples_data$Target.Name=='BSP',][n,]
+    wt_undiffs<-rbind(wt_undiffs,wt_undiff)
   }
-  wt_undiffs<-rbind(wt_undiffs,wt_undiff)
+}
+# wt_diffs group
+for (n in 1:nrow(relative_samples_data[relative_samples_data$Target.Name=='BSP',])){
+  if (grepl('^wt', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n]) & grepl('Differ$', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n])){
+    wt_diff<-relative_samples_data[relative_samples_data$Target.Name=='BSP',][n,]
+    wt_diffs<-rbind(wt_diffs,wt_diff)
+  }
+}
+# mu_undiffs group
+for (n in 1:nrow(relative_samples_data[relative_samples_data$Target.Name=='BSP',])){
+  if (grepl('^mu', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n]) & grepl('Undiffer$', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n])){
+    mu_undiff<-relative_samples_data[relative_samples_data$Target.Name=='BSP',][n,]
+    mu_undiffs<-rbind(mu_undiffs,mu_undiff)
+  }
+}
+# mu_diffs group
+for (n in 1:nrow(relative_samples_data[relative_samples_data$Target.Name=='BSP',])){
+  if (grepl('^mu', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n]) & grepl('Differ$', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n])){
+    mu_diff<-relative_samples_data[relative_samples_data$Target.Name=='BSP',][n,]
+    mu_diffs<-rbind(mu_diffs,mu_diff)
+  }
 }
 
+exprs.mean<-mean(wt_undiffs$exprs,wt_diffs$exprs,wt_undiffs$exprs,wt_diffs$exprs)
+barplot()
