@@ -1,7 +1,5 @@
 library(readxl)
 
-
-
 dirPath<-'/home/joey/Documents/WanYing'
 setwd(dirPath)
 
@@ -78,42 +76,77 @@ for (sample_name in row.names(table(newdata[,'Sample.Name']))){
 }
 
 # differential_gene_express in samples
-   
-pdf("myplot.pdf", width=8.5, height=5)
+
+relative_samples_data<-NULL
 for (sample_name in row.names(table(all_sample_data$Sample.Name))){
   A_sample_data<-all_sample_data[all_sample_data$Sample.Name==sample_name,]
   Crtl_Ct<-A_sample_data[A_sample_data$Target.Name=='GAPDH',]$Ct.Mean
   genes<-NULL
-  genes_de<-NULL
+  genes_dCt<-NULL
+  relative_sample_data<-NULL
   for (gene in A_sample_data$Target.Name){
     if (gene!='GAPDH'){
       Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
-      gene_de<-2^(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
+      gene_dCt<-(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
       genes<-c(genes,gene)
-      genes_de<-c(genes_de,gene_de)
+      genes_dCt<-c(genes_dCt,gene_dCt)
     }
+  relative_sample_data<-data.frame(rep(sample_name,length(genes)))
+  relative_sample_data<-cbind(relative_sample_data, genes, genes_dCt)
   }
-  barplot(genes_de, names.arg = genes, cex.names=0.8, ylab = 'Relative expression vs GAPDH',main = sample_name)
+  relative_samples_data<-rbind(relative_samples_data,relative_sample_data)
 }
-dev.off()
+# add column names
+colnames(relative_samples_data)<-c('Sample.Name','Target.Name','dCt')
 
-# Sort into undiffer_group and diff_group
-undiffer_group<-NULL
-differ_group<-NULL
-for (n in 1:nrow(all_sample_data)){
-  if (grepl('Differ$',all_sample_data$Sample.Name[n])){
-    differ_group<-rbind(differ_group, all_sample_data[n,])
-  } else if (grepl('Undiffer$',all_sample_data$Sample.Name[n])){
-    undiffer_group<-rbind(undiffer_group, all_sample_data[n,])
+# list sample names
+Samples.Name<-row.names(table(relative_samples_data$Sample.Name))
+Ctrl.Samples<-c('wt_272 Undiffer','wt_279 Undiffer','wt_328 Undiffer','wt_339 Undiffer')
+Ctrls.Mean.dCt<-NULL
+for (gene in genes ) {
+  Ctrls.dCt<-NULL
+  for (Ctrl.Sample in Ctrl.Samples){
+    Ctrl.dCt<-relative_samples_data[relative_samples_data$Sample.Name==Ctrl.Sample,][relative_samples_data[relative_samples_data$Sample.Name==Ctrl.Sample,]$Target.Name==gene,]$dCt
+    Ctrls.dCt<-c(Ctrls.dCt,Ctrl.dCt)
   }
+  Ctrl.Mean.dCt<-mean(Ctrls.dCt)
+  Ctrls.Mean.dCt<-c(Ctrls.Mean.dCt,Ctrl.Mean.dCt)
+}
+Ctrls.Mean.dCt_table<-data.frame(genes)
+Ctrls.Mean.dCt_table<-cbind(Ctrls.Mean.dCt_table,Ctrls.Mean.dCt)
+colnames(Ctrls.Mean.dCt_table)<-c('Target.Name','dCt')
+
+# Create ddCt table
+
+
+ddCt_list<-NULL
+for (n in 1:nrow(relative_samples_data)){
+  if (relative_samples_data[n,]$Target.Name=='BSP'){
+    ddCt<-(relative_samples_data[n,'dCt']-Ctrls.Mean.dCt_table[Ctrls.Mean.dCt_table$Target.Name=='BSP',]$dCt)
+  } else if (relative_samples_data[n,]$Target.Name=='Col1a1') {
+    ddCt<-(relative_samples_data[n,'dCt']-Ctrls.Mean.dCt_table[Ctrls.Mean.dCt_table$Target.Name=='Col1a1',]$dCt)
+  } else if (relative_samples_data[n,]$Target.Name=='Col2a1') {
+    ddCt<-(relative_samples_data[n,'dCt']-Ctrls.Mean.dCt_table[Ctrls.Mean.dCt_table$Target.Name=='Col2a1',]$dCt)
+  } else if (relative_samples_data[n,]$Target.Name=='OSX') {
+    ddCt<-(relative_samples_data[n,'dCt']-Ctrls.Mean.dCt_table[Ctrls.Mean.dCt_table$Target.Name=='OSX',]$dCt)
+  } else if (relative_samples_data[n,]$Target.Name=='Runx2') {
+    ddCt<-(relative_samples_data[n,'dCt']-Ctrls.Mean.dCt_table[Ctrls.Mean.dCt_table$Target.Name=='Runx2',]$dCt)
+  } else if (relative_samples_data[n,]$Target.Name=='SOX9') {
+    ddCt<-(relative_samples_data[n,'dCt']-Ctrls.Mean.dCt_table[Ctrls.Mean.dCt_table$Target.Name=='SOX9',]$dCt)
+  }
+  ddCt_list<-c(ddCt_list,ddCt)
 }
 
-wt_undiffer_group<-NULL
-mu_undiffer_group<-NULL
-for (n in 1:nrow(undiffer_group)){
-  if(grepl('^wt', undiffer_group$Sample.Name[n])){
-    wt_undiffer_group<-rbind(wt_undiffer_group, undiffer_group[n,])
-  } else if (grepl('^mu', undiffer_group$Sample.Name[n])){
-    mu_undiffer_group<-rbind(mu_undiffer_group, undiffer_group[n,])
+exprs<-2^-ddCt_list
+relative_samples_data$ddCt<-ddCt_list
+relative_samples_data$exprs<-exprs
+wt_undiff<-NULL
+
+wt_undiffs<-wt_diffs<-mu_undiffs<-mu_diffs<-NULL
+for (n in 1:nrow(relative_samples_data[relative_samples_data$Target.Name=='BSP',])){
+  if (grepl('^wt', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n]) & grepl('Undiffer$', relative_samples_data[relative_samples_data$Target.Name=='BSP',]$Sample.Name[n])){
+    wt_undiff<-relative_samples_data[relative_samples_data$Target.Name=='BSP',][n,]
   }
+  wt_undiffs<-rbind(wt_undiffs,wt_undiff)
 }
+
