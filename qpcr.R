@@ -1,7 +1,5 @@
 library(readxl)
-
-dirPath<-'/home/joey/Documents/WanYing'
-
+dirPath<-'C:/Users/Changyi.Lin/Documents/bowl'
 setwd(dirPath)
 
 tryCatch(
@@ -141,7 +139,37 @@ for (n in 1:nrow(relative_samples_data)){
 exprs<-2^-ddCt_list
 relative_samples_data$ddCt<-ddCt_list
 relative_samples_data$exprs<-exprs
+group_list<-NULL
+for (n in 1:nrow(relative_samples_data)){
+  if (grepl('^wt',relative_samples_data$Sample.Name[n])& grepl('Undiffer$',relative_samples_data$Sample.Name[n])){
+    group<-'WT Undiff'
+  } else if (grepl('^wt',relative_samples_data$Sample.Name[n])& grepl('Differ$',relative_samples_data$Sample.Name[n])){
+    group<-'WT Diff'
+  } else if (grepl('^mu',relative_samples_data$Sample.Name[n])& grepl('Undiffer$',relative_samples_data$Sample.Name[n])){
+    group<-'MU Undiff'
+  } else if (grepl('^mu',relative_samples_data$Sample.Name[n])& grepl('Differ$',relative_samples_data$Sample.Name[n])){
+    group<-'MU Diff'
+  }
+  group_list<-c(group_list, group)
+}
+relative_samples_data$Group<-group_list
 
+# Dot plot by ggplot2
+library(ggplot2)
+
+data_summary <- function(x) {
+  m <- mean(x)
+  ymin <- m-sd(x)
+  ymax <- m+sd(x)
+  return(c(y=m,ymin=ymin,ymax=ymax))
+}
+
+ggplot(data = relative_samples_data[relative_samples_data$Target.Name=='BSP',], aes(x=Group, y=exprs)) + 
+  geom_dotplot(binaxis='y', stackdir='center') +
+  stat_summary(fun.data=data_summary, 
+               geom="pointrange", color="red")
+
+summary.data.frame(relative_samples_data[relative_samples_data$Target.Name=='BSP',])
 
 wt_undiffs<-wt_diffs<-mu_undiffs<-mu_diffs<-NULL
 # wt_undiffs group
@@ -172,6 +200,3 @@ for (n in 1:nrow(relative_samples_data[relative_samples_data$Target.Name=='BSP',
     mu_diffs<-rbind(mu_diffs,mu_diff)
   }
 }
-
-exprs.mean<-mean(wt_undiffs$exprs,wt_diffs$exprs,wt_undiffs$exprs,wt_diffs$exprs)
-barplot()
