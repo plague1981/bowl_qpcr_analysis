@@ -6,22 +6,57 @@ library(xlsx)
 library(ggplot2)
 library(rapportools)
 
+
 ui<- dashboardPage(
      dashboardHeader(title = 'Bowl\'s project'),
      dashboardSidebar(
        fileInput(inputId = 'file',label = 'Select input file:',multiple = FALSE),
        tableOutput('filename'),
-       actionButton(inputId = "analyze", label = "Analyze")
+       actionButton(inputId = "analyze", label = "Read file"),
+       tableOutput('control_group'),
+       uiOutput("controls"),
+       actionButton(inputId = "analyze_ctrl", label = "Get Control")
+       
      ),
      dashboardBody(
        navbarPage(title ='Data analysis', 
          tabPanel('Raw data', icon = icon('file'),
            tableOutput('rawdata')
          ),
-         tabPanel('Calibration', icon = icon('file'),
+         tabPanel('Calibration', icon = icon('calendar'),
            tableOutput('calibration')
+         ),
+         tabPanel('Selected Ctrls', icon = icon('calendar-plus'),
+                  tableOutput('ctrls')
+         ),
+         tabPanel('Relative Data', icon = icon('calendar-check'),
+                  uiOutput("show_results"),
+                  tableOutput('relative_inter_1'),
+                  tags$hr(),
+                  tableOutput('relative_inter_2'),
+                  tags$hr(),
+                  tableOutput('relative_inter_3'),
+                  tags$hr(),
+                  tableOutput('relative_inter_4'),
+                  tags$hr(),
+                  tableOutput('relative_inter_5'),
+                  tags$hr(),
+                  tableOutput('relative_inter_6')
+         ),
+         tabPanel('Plots', icon = icon('chart-bar'),
+                  plotOutput('relative_inter_1_plot'),
+                  tags$hr(),
+                  plotOutput('relative_inter_2_plot'),
+                  tags$hr(),
+                  plotOutput('relative_inter_3_plot'),
+                  tags$hr(),
+                  plotOutput('relative_inter_4_plot'),
+                  tags$hr(),
+                  plotOutput('relative_inter_5_plot'),
+                  tags$hr(),
+                  plotOutput('relative_inter_6_plot'),
+                  tags$hr(),
          )
-             
        )
            
      )
@@ -29,24 +64,14 @@ ui<- dashboardPage(
 
 
 server <- function(input, output, session){
-  # functions
+  # functions and variables
   readfile<- eventReactive(input$analyze,{ 
     file2table<-read_excel(input$file$datapath, col_types="text", range=cell_cols(c("B","X")), col_names = TRUE ,trim_ws = TRUE, sheet = 'Results')[-(1:37),]
     colnames(file2table)<-read_excel(input$file$datapath, col_types="text", range=cell_cols(c("B","X")), col_names = TRUE ,trim_ws = TRUE, sheet = 'Results')[37,]
     file2table<-data.frame(file2table)[,c(1,3,4,8,9,10,15,23)]
     return(file2table)
   })
-  calibration<- eventReactive(input$analyze,{
-
-
-  })
-  output$filename<-renderTable({
-    input$file[1]
-  })
-  output$rawdata<-renderTable({
-    readfile()
-  })
-  output$calibration<-renderTable({
+  all_sample_data<-eventReactive(input$analyze,{ 
     all_sample_data<-NULL
     for (sample_name in row.names(table(readfile()[,'Sample.Name']))){
       sample_A<-readfile()[readfile()$Sample.Name==sample_name,]
@@ -93,6 +118,165 @@ server <- function(input, output, session){
     }
     return(all_sample_data)
   })
+  relative_data_intra<-eventReactive(input$analyze,{
+    # use relative_samples_data.R
+    #source('relative_samples_data.R', local = TRUE)
+    relative_samples_data<-NULL
+    for (sample_name in row.names(table(all_sample_data()$Sample.Name))){
+      A_sample_data<-all_sample_data()[all_sample_data()$Sample.Name==sample_name,]
+      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name=='GAPDH',]$Ct.Mean
+      genes<-NULL
+      genes_dCt<-NULL
+      relative_sample_data<-NULL
+      for (gene in A_sample_data$Target.Name){
+        if (gene!='GAPDH'){
+          Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
+          gene_dCt<-(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
+          genes<-c(genes,gene)
+          genes_dCt<-c(genes_dCt,gene_dCt)
+        }
+        relative_sample_data<-data.frame(rep(sample_name,length(genes)))
+        relative_sample_data<-cbind(relative_sample_data, genes, genes_dCt)
+      }
+      relative_samples_data<-rbind(relative_samples_data,relative_sample_data)
+    }
+    # add column names
+    colnames(relative_samples_data)<-c('Sample.Name','Target.Name','dCt')
+    return(relative_samples_data)
+  })
+  Ctrls.Mean.dCt_table<-eventReactive(input$analyze_ctrl,{
+    # use Ctrls.Mean.dCt_table.R
+    #source('Ctrls.Mean.dCt_table.R', local = TRUE)
+    Samples.Name<-row.names(table(relative_data_intra()$Sample.Name))
+    genes<-row.names(table(relative_data_intra()$Target.Name))
+    Ctrl.Samples<-input$controls
+    Ctrls.Mean.dCt<-NULL
+    for (gene in genes ) {
+      Ctrls.dCt<-NULL
+      for (Ctrl.Sample in Ctrl.Samples){
+        Ctrl.dCt<-relative_data_intra()[relative_data_intra()$Sample.Name==Ctrl.Sample,][relative_data_intra()[relative_data_intra()$Sample.Name==Ctrl.Sample,]$Target.Name==gene,]$dCt
+        Ctrls.dCt<-c(Ctrls.dCt,Ctrl.dCt)
+      }
+      Ctrl.Mean.dCt<-mean(Ctrls.dCt)
+      Ctrls.Mean.dCt<-c(Ctrls.Mean.dCt,Ctrl.Mean.dCt)
+    }
+    Ctrls.Mean.dCt_table<-data.frame(genes)
+    Ctrls.Mean.dCt_table<-cbind(Ctrls.Mean.dCt_table,Ctrls.Mean.dCt)
+    colnames(Ctrls.Mean.dCt_table)<-c('Target.Name','dCt')
+    return(Ctrls.Mean.dCt_table)
+  })
+  relative_data_inter<-eventReactive(input$analyze_ctrl,{
+    # use relative_data_inter.R
+    #source('relative_data_inter.R', local = TRUE)
+    relative_data_inter<-relative_data_intra()
+    ddCt_list<-NULL
+    for (n in 1:nrow(relative_data_intra())){
+      if (relative_data_intra()[n,]$Target.Name=='BSP'){
+        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='BSP',]$dCt)
+      } else if (relative_data_intra()[n,]$Target.Name=='Col1a1') {
+        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col1a1',]$dCt)
+      } else if (relative_data_intra()[n,]$Target.Name=='Col2a1') {
+        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col2a1',]$dCt)
+      } else if (relative_data_intra()[n,]$Target.Name=='OSX') {
+        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='OSX',]$dCt)
+      } else if (relative_data_intra()[n,]$Target.Name=='Runx2') {
+        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Runx2',]$dCt)
+      } else if (relative_data_intra()[n,]$Target.Name=='SOX9') {
+        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='SOX9',]$dCt)
+      }
+      ddCt_list<-c(ddCt_list,ddCt)
+    }
+    
+    exprs<-2^ddCt_list
+    relative_data_inter$ddCt<-ddCt_list
+    relative_data_inter$exprs<-exprs
+    group_list<-NULL
+    for (n in 1:nrow(relative_data_inter)){
+      if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
+        group<-'WT Undiff'
+      } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
+        group<-'WT Diff'
+      } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
+        group<-'MU Undiff'
+      } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
+        group<-'MU Diff'
+      }
+      group_list<-c(group_list, group)
+    }
+    relative_data_inter$Group<-group_list
+    return(relative_data_inter[order(relative_data_inter$Target.Name,relative_data_inter$Group,decreasing = TRUE),])
+  })
+  # Output
+  # Create choosable control list
+  output$controls <- renderUI({
+    groups <-row.names(table(readfile()$Sample.Name))
+    checkboxGroupInput("controls", "Choose Controls:", groups)
+  })
+  output$show_results <- renderUI({
+    groups <-row.names(table(relative_data_inter()$Target.Name))
+    checkboxGroupInput("show_results", "Look up genes in groups:", groups, selected = groups)
+  })
+  output$filename<-renderTable({
+    input$file[1]
+  })
+  output$rawdata<-renderTable({
+    readfile()
+  })
+  output$calibration<-renderTable({
+    all_sample_data()
+  })
+  output$ctrls<-renderTable({
+    Ctrls.Mean.dCt_table()
+  })
+  output$relative_inter_1<-renderTable({
+    source('global.R', local = TRUE)
+    gene_expression_table(input$show_results[1])
+  })
+  output$relative_inter_2<-renderTable({
+    source('global.R', local = TRUE)
+    gene_expression_table(input$show_results[2])
+  })
+  output$relative_inter_3<-renderTable({
+    source('global.R', local = TRUE)
+    gene_expression_table(input$show_results[3])
+  })
+  output$relative_inter_4<-renderTable({
+    source('global.R', local = TRUE)
+    gene_expression_table(input$show_results[4])
+  })
+  output$relative_inter_5<-renderTable({
+    source('global.R', local = TRUE)
+    gene_expression_table(input$show_results[5])
+  })
+  output$relative_inter_6<-renderTable({
+    source('global.R', local = TRUE)
+    gene_expression_table(input$show_results[6])
+  })
+  output$relative_inter_1_plot<-renderPlot({
+    source('global.R', local = TRUE)
+    dot_plot(input$show_results[1])
+  })
+  output$relative_inter_2_plot<-renderPlot({
+    source('global.R', local = TRUE)
+    dot_plot(input$show_results[2])
+  })
+  output$relative_inter_3_plot<-renderPlot({
+    source('global.R', local = TRUE)
+    dot_plot(input$show_results[3])
+  })
+  output$relative_inter_4_plot<-renderPlot({
+    source('global.R', local = TRUE)
+    dot_plot(input$show_results[4])
+  })
+  output$relative_inter_5_plot<-renderPlot({
+    source('global.R', local = TRUE)
+    dot_plot(input$show_results[5])
+  })
+  output$relative_inter_6_plot<-renderPlot({
+    source('global.R', local = TRUE)
+    dot_plot(input$show_results[6])
+  })
+
 }
 
 shinyApp(ui, server)
