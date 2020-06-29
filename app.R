@@ -10,56 +10,84 @@ library(rapportools)
 ui<- dashboardPage(
      dashboardHeader(title = 'Bowl\'s project'),
      dashboardSidebar(
+       sidebarMenu(
+         menuItem("How to use", tabName = "guideline", icon = icon('map')),
+         menuItem('Data', tabName = 'start', icon = icon('chart-line'))
+       ),
        fileInput(inputId = 'file',label = 'Select input file:',multiple = FALSE),
        tableOutput('filename'),
-       actionButton(inputId = "analyze", label = "Read file"),
-       tableOutput('control_group'),
-       uiOutput("controls"),
-       actionButton(inputId = "analyze_ctrl", label = "Get Control")
-       
+       actionButton(inputId = "analyze", label = "Get data")
      ),
      dashboardBody(
-       navbarPage(title ='Data analysis', 
-         tabPanel('Raw data', icon = icon('file'),
-           tableOutput('rawdata')
+       tabItems(
+         tabItem(tabName = "guideline",
+                 navbarPage(title = 'About this website'),
+                 tags$div(
+                   tags$p('This website is customerized for WanYing\'s realtime PCR results analysis. Please make sure you have a correct format before you upload your file.')
+                 ),
+                 tags$h3('1. Check your file format'),
+                 tags$h3('2. Select and upload your file on the Sidebar'),
+                 tags$div(`data-value` = "test", tags$code("This text will be displayed as computer code."))
+
+                 
          ),
-         tabPanel('Calibration', icon = icon('calendar'),
-           tableOutput('calibration')
-         ),
-         tabPanel('Selected Ctrls', icon = icon('calendar-plus'),
-                  tableOutput('ctrls')
-         ),
-         tabPanel('Relative Data', icon = icon('calendar-check'),
-                  uiOutput("show_results"),
-                  tableOutput('relative_inter_1'),
-                  tags$hr(),
-                  tableOutput('relative_inter_2'),
-                  tags$hr(),
-                  tableOutput('relative_inter_3'),
-                  tags$hr(),
-                  tableOutput('relative_inter_4'),
-                  tags$hr(),
-                  tableOutput('relative_inter_5'),
-                  tags$hr(),
-                  tableOutput('relative_inter_6')
-         ),
-         tabPanel('Plots', icon = icon('chart-bar'),
-                  plotOutput('relative_inter_1_plot'),
-                  tags$hr(),
-                  plotOutput('relative_inter_2_plot'),
-                  tags$hr(),
-                  plotOutput('relative_inter_3_plot'),
-                  tags$hr(),
-                  plotOutput('relative_inter_4_plot'),
-                  tags$hr(),
-                  plotOutput('relative_inter_5_plot'),
-                  tags$hr(),
-                  plotOutput('relative_inter_6_plot'),
-                  tags$hr(),
-         )
-       )
+         tabItem(tabName = 'start',
+                 navbarPage(title ='Data analysis', 
+                            tabPanel('Raw data', icon = icon('file'),
+                                 tableOutput('rawdata')
+                            ),
+                            tabPanel('Calibration', icon = icon('calendar'),
+                                 tableOutput('calibration')
+                            ),
+                            tabPanel('Set up Ctrls', icon = icon('calendar-plus'),
+                                 box(width = 4,
+                                     uiOutput("controls")
+                                  ),
+                                 box(width = 4,
+                                     checkboxGroupInput("selected_controls", "Selected Control"),
+                                     selectInput('internal_control', 'Please select internal control', choices = c('GAPDH','ACTIN','HPRT'), selected = 'GAPDH'),
+                                     actionButton(inputId = "analyze_ctrl", label = "Analyze")
+                                 ),
+                                 box(width = 4,
+                                     tableOutput('ctrls')
+                                 )
+                           ),
+                           tabPanel('Relative Data', icon = icon('calendar-check'),
+                                 uiOutput("show_results"),
+                                 tableOutput('relative_inter_1'),
+                                 tags$hr(),
+                                 tableOutput('relative_inter_2'),
+                                 tags$hr(),
+                                 tableOutput('relative_inter_3'),
+                                 tags$hr(),
+                                 tableOutput('relative_inter_4'),
+                                 tags$hr(),
+                                 tableOutput('relative_inter_5'),
+                                 tags$hr(),
+                                 tableOutput('relative_inter_6')
+                           ),
+                           tabPanel('Plots', icon = icon('chart-bar'),
+                                 plotOutput('relative_inter_1_plot'),
+                                 tags$hr(),
+                                 plotOutput('relative_inter_2_plot'),
+                                 tags$hr(),
+                                 plotOutput('relative_inter_3_plot'),
+                                 tags$hr(),
+                                 plotOutput('relative_inter_4_plot'),
+                                 tags$hr(),
+                                 plotOutput('relative_inter_5_plot'),
+                                 tags$hr(),
+                                 plotOutput('relative_inter_6_plot'),
+                                 tags$hr(),
+                           ),
+                           tabPanel('Statistic', icon = icon('signal'))
+                           )
            
-     )
+                  )
+           
+       )
+     ),
+
 )
 
 
@@ -124,12 +152,12 @@ server <- function(input, output, session){
     relative_samples_data<-NULL
     for (sample_name in row.names(table(all_sample_data()$Sample.Name))){
       A_sample_data<-all_sample_data()[all_sample_data()$Sample.Name==sample_name,]
-      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name=='GAPDH',]$Ct.Mean
+      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name==input$internal_control,]$Ct.Mean
       genes<-NULL
       genes_dCt<-NULL
       relative_sample_data<-NULL
       for (gene in A_sample_data$Target.Name){
-        if (gene!='GAPDH'){
+        if (gene!=input$internal_control){
           Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
           gene_dCt<-(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
           genes<-c(genes,gene)
@@ -215,6 +243,20 @@ server <- function(input, output, session){
   output$show_results <- renderUI({
     groups <-row.names(table(relative_data_inter()$Target.Name))
     checkboxGroupInput("show_results", "Look up genes in groups:", groups, selected = groups)
+  })
+  observe({
+    x <- input$controls
+    
+    # Can use character(0) to remove all choices
+    if (is.null(x))
+      x <- character(0)
+    
+    # Can also set the label and select items
+    updateCheckboxGroupInput(session, "selected_controls",
+                             label = paste("Controls are", length(x)),
+                             choices = x,
+                             selected = x
+    )
   })
   output$filename<-renderTable({
     input$file[1]
