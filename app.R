@@ -8,86 +8,96 @@ library(rapportools)
 
 
 ui<- dashboardPage(
-     dashboardHeader(title = 'Bowl\'s project'),
-     dashboardSidebar(
-       sidebarMenu(
-         menuItem("How to use", tabName = "guideline", icon = icon('map')),
-         menuItem('Data', tabName = 'start', icon = icon('chart-line'))
-       ),
-       fileInput(inputId = 'file',label = 'Select input file:',multiple = FALSE),
-       tableOutput('filename'),
-       actionButton(inputId = "analyze", label = "Get data")
-     ),
-     dashboardBody(
-       tabItems(
-         tabItem(tabName = "guideline",
-                 navbarPage(title = 'About this website'),
-                 tags$div(
-                   tags$p('This website is customerized for WanYing\'s realtime PCR results analysis. Please make sure you have a correct format before you upload your file.')
-                 ),
-                 tags$h3('1. Check your file format'),
-                 tags$h3('2. Select and upload your file on the Sidebar'),
-                 tags$div(`data-value` = "test", tags$code("This text will be displayed as computer code."))
-
-                 
-         ),
-         tabItem(tabName = 'start',
-                 navbarPage(title ='Data analysis', 
-                            tabPanel('Raw data', icon = icon('file'),
-                                 tableOutput('rawdata')
-                            ),
-                            tabPanel('Calibration', icon = icon('calendar'),
-                                 tableOutput('calibration')
-                            ),
-                            tabPanel('Set up Ctrls', icon = icon('calendar-plus'),
-                                 box(width = 4,
-                                     uiOutput("controls")
+  dashboardHeader(title = 'Bowl\'s project'),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("How to use", tabName = "guideline", icon = icon('map')),
+      menuItem('Data', tabName = 'start', icon = icon('chart-line'))
+    ),
+    fileInput(inputId = 'file',label = 'Select input file:',multiple = FALSE),
+    tableOutput('filename'),
+    actionButton(inputId = "analyze", label = "Get data")
+  ),
+  dashboardBody(
+    tabItems(
+      tabItem(tabName = "guideline",
+              navbarPage(title = 'About this website'),
+              tags$div(
+                tags$p('This website is customerized for WanYing\'s realtime PCR results analysis. Please make sure you have a correct format before you upload your file.')
+              ),
+              tags$h3('1. Check your file format'),
+              tags$div(
+                tags$p('Store your data in the sheet named, "Results".'),
+                tags$br(),
+                tags$img(src='Sheet_Name.png'),
+                tags$br(),
+                tags$p('Make sure your data starts from row 38'),
+                tags$img(src='data_capture.png'),
+                tags$p('Row 38th will be the column names and only data in column "Well Position"
+,"Sample Name","Target Name",8,9,10,15,23 will be captured')
+                ),
+              tags$h3('2. Select and upload your file on the Sidebar'),
+              tags$div(`data-value` = "test", tags$code("This text will be displayed as computer code."))
+              
+              
+      ),
+      tabItem(tabName = 'start',
+              navbarPage(title ='Data analysis', 
+                         tabPanel('Raw data', icon = icon('file'),
+                                  tableOutput('rawdata')
+                         ),
+                         tabPanel('Calibration', icon = icon('calendar'),
+                                  tableOutput('calibration')
+                         ),
+                         tabPanel('Set up Ctrls', icon = icon('calendar-plus'),
+                                  box(width = 4,
+                                      uiOutput("controls")
                                   ),
-                                 box(width = 4,
-                                     checkboxGroupInput("selected_controls", "Selected Control"),
-                                     selectInput('internal_control', 'Please select internal control', choices = c('GAPDH','ACTIN','HPRT'), selected = 'GAPDH'),
-                                     actionButton(inputId = "analyze_ctrl", label = "Analyze")
-                                 ),
-                                 box(width = 4,
-                                     tableOutput('ctrls')
-                                 )
-                           ),
-                           tabPanel('Relative Data', icon = icon('calendar-check'),
-                                 uiOutput("show_results"),
-                                 tableOutput('relative_inter_1'),
-                                 tags$hr(),
-                                 tableOutput('relative_inter_2'),
-                                 tags$hr(),
-                                 tableOutput('relative_inter_3'),
-                                 tags$hr(),
-                                 tableOutput('relative_inter_4'),
-                                 tags$hr(),
-                                 tableOutput('relative_inter_5'),
-                                 tags$hr(),
-                                 tableOutput('relative_inter_6')
-                           ),
-                           tabPanel('Plots', icon = icon('chart-bar'),
-                                 plotOutput('relative_inter_1_plot'),
-                                 tags$hr(),
-                                 plotOutput('relative_inter_2_plot'),
-                                 tags$hr(),
-                                 plotOutput('relative_inter_3_plot'),
-                                 tags$hr(),
-                                 plotOutput('relative_inter_4_plot'),
-                                 tags$hr(),
-                                 plotOutput('relative_inter_5_plot'),
-                                 tags$hr(),
-                                 plotOutput('relative_inter_6_plot'),
-                                 tags$hr(),
-                           ),
-                           tabPanel('Statistic', icon = icon('signal'))
-                           )
-           
-                  )
-           
-       )
-     ),
-
+                                  box(width = 4,
+                                      checkboxGroupInput("selected_controls", "Selected Control"),
+                                      selectInput('internal_control', 'Please select internal control', choices = c('GAPDH','ACTIN','HPRT'), selected = 'GAPDH'),
+                                      actionButton(inputId = "analyze_ctrl", label = "Analyze")
+                                  ),
+                                  box(width = 4,
+                                      tableOutput('ctrls')
+                                  )
+                         ),
+                         tabPanel('Relative Data', icon = icon('calendar-check'),
+                                  uiOutput("show_results"),
+                                  tableOutput('relative_inter_1'),
+                                  tags$hr(),
+                                  tableOutput('relative_inter_2'),
+                                  tags$hr(),
+                                  tableOutput('relative_inter_3'),
+                                  tags$hr(),
+                                  tableOutput('relative_inter_4'),
+                                  tags$hr(),
+                                  tableOutput('relative_inter_5'),
+                                  tags$hr(),
+                                  tableOutput('relative_inter_6')
+                         ),
+                         tabPanel('Plots', icon = icon('chart-bar'),
+                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot'),selected = 'Dot-plot'),
+                                  plotOutput('relative_inter_1_plot'),
+                                  tags$hr(),
+                                  plotOutput('relative_inter_2_plot'),
+                                  tags$hr(),
+                                  plotOutput('relative_inter_3_plot'),
+                                  tags$hr(),
+                                  plotOutput('relative_inter_4_plot'),
+                                  tags$hr(),
+                                  plotOutput('relative_inter_5_plot'),
+                                  tags$hr(),
+                                  plotOutput('relative_inter_6_plot'),
+                                  tags$hr(),
+                         ),
+                         tabPanel('Statistic', icon = icon('signal'))
+              )
+      )
+      
+    )
+  ),
+  
 )
 
 
@@ -318,7 +328,7 @@ server <- function(input, output, session){
     source('global.R', local = TRUE)
     dot_plot(input$show_results[6])
   })
-
+  
 }
 
 shinyApp(ui, server)
