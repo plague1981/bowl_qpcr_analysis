@@ -1,3 +1,5 @@
+
+
 gene_expression_table <- function (input){
   if (is.empty(input)){
     return(NULL)
@@ -55,6 +57,4 @@ draw_plot <- function(input,plottype) {
     dot_box_plot(input)
   }
 }
-
-
 
