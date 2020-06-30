@@ -11,11 +11,13 @@ ui<- dashboardPage(
   dashboardHeader(title = 'Bowl\'s project'),
   dashboardSidebar(
     sidebarMenu(
-      menuItem("How to use", tabName = "guideline", icon = icon('map')),
-      menuItem('Data', tabName = 'start', icon = icon('chart-line'))
+      menuItem('Data', tabName = 'start', icon = icon('chart-line')),
+      menuItem("How to use", tabName = "guideline", icon = icon('map'))
     ),
     fileInput(inputId = 'file',label = 'Select input file:',multiple = FALSE),
     tableOutput('filename'),
+    selectInput(inputId = 'data_type', label = 'Please select data type:', choices = c('Time Course','WT/MU'), selected = 'Time Course'),
+    tags$hr(),
     actionButton(inputId = "analyze", label = "Get data")
   ),
   dashboardBody(
@@ -29,17 +31,13 @@ ui<- dashboardPage(
               tags$div(
                 tags$p('Store your data in the sheet named, "Results".'),
                 tags$br(),
-                tags$img(src='Sheet_Name.png'),
+                tags$img(src='excel_format.png'),
                 tags$br(),
                 tags$p('Make sure your data starts from row 38'),
-                tags$img(src='data_capture.png'),
                 tags$p('Row 38th will be the column names and only data in column "Well Position"
-,"Sample Name","Target Name",8,9,10,15,23 will be captured')
-                ),
-              tags$h3('2. Select and upload your file on the Sidebar'),
-              tags$div(`data-value` = "test", tags$code("This text will be displayed as computer code."))
-              
-              
+                        ,"Sample Name","Target Name",8,9,10,15,23 will be captured')
+              ),
+              tags$h3('2. Select and upload your file on the Sidebar')
       ),
       tabItem(tabName = 'start',
               navbarPage(title ='Data analysis', 
@@ -64,6 +62,7 @@ ui<- dashboardPage(
                          ),
                          tabPanel('Relative Data', icon = icon('calendar-check'),
                                   uiOutput("show_results"),
+                                  tableOutput('relative_inter_test'),
                                   tableOutput('relative_inter_1'),
                                   tags$hr(),
                                   tableOutput('relative_inter_2'),
@@ -74,10 +73,10 @@ ui<- dashboardPage(
                                   tags$hr(),
                                   tableOutput('relative_inter_5'),
                                   tags$hr(),
-                                  tableOutput('relative_inter_6')
+                                  tableOutput('relative_inter_6'),
                          ),
                          tabPanel('Plots', icon = icon('chart-bar'),
-                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot'),selected = 'Dot-plot'),
+                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'),selected = 'Dot-plot'),
                                   plotOutput('relative_inter_1_plot'),
                                   tags$hr(),
                                   plotOutput('relative_inter_2_plot'),
@@ -156,7 +155,7 @@ server <- function(input, output, session){
     }
     return(all_sample_data)
   })
-  relative_data_intra<-eventReactive(input$analyze,{
+  relative_data_intra<-eventReactive(input$analyze_ctrl,{
     # use relative_samples_data.R
     #source('relative_samples_data.R', local = TRUE)
     relative_samples_data<-NULL
@@ -182,9 +181,9 @@ server <- function(input, output, session){
     colnames(relative_samples_data)<-c('Sample.Name','Target.Name','dCt')
     return(relative_samples_data)
   })
+  
   Ctrls.Mean.dCt_table<-eventReactive(input$analyze_ctrl,{
-    # use Ctrls.Mean.dCt_table.R
-    #source('Ctrls.Mean.dCt_table.R', local = TRUE)
+
     Samples.Name<-row.names(table(relative_data_intra()$Sample.Name))
     genes<-row.names(table(relative_data_intra()$Target.Name))
     Ctrl.Samples<-input$controls
@@ -203,24 +202,25 @@ server <- function(input, output, session){
     colnames(Ctrls.Mean.dCt_table)<-c('Target.Name','dCt')
     return(Ctrls.Mean.dCt_table)
   })
+  
   relative_data_inter<-eventReactive(input$analyze_ctrl,{
-    # use relative_data_inter.R
-    #source('relative_data_inter.R', local = TRUE)
     relative_data_inter<-relative_data_intra()
     ddCt_list<-NULL
-    for (n in 1:nrow(relative_data_intra())){
-      if (relative_data_intra()[n,]$Target.Name=='BSP'){
-        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='BSP',]$dCt)
-      } else if (relative_data_intra()[n,]$Target.Name=='Col1a1') {
-        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col1a1',]$dCt)
-      } else if (relative_data_intra()[n,]$Target.Name=='Col2a1') {
-        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col2a1',]$dCt)
-      } else if (relative_data_intra()[n,]$Target.Name=='OSX') {
-        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='OSX',]$dCt)
-      } else if (relative_data_intra()[n,]$Target.Name=='Runx2') {
-        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Runx2',]$dCt)
-      } else if (relative_data_intra()[n,]$Target.Name=='SOX9') {
-        ddCt<-(relative_data_intra()[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='SOX9',]$dCt)
+    for (n in 1:nrow(relative_data_inter)){
+      if (relative_data_inter[n,]$Target.Name=='BSP'){
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='BSP',]$dCt)
+      } else if (relative_data_inter[n,]$Target.Name=='Col1a1') {
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col1a1',]$dCt)
+      } else if (relative_data_inter[n,]$Target.Name=='Col2a1') {
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col2a1',]$dCt)
+      } else if (relative_data_inter[n,]$Target.Name=='OSX') {
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='OSX',]$dCt)
+      } else if (relative_data_inter[n,]$Target.Name=='Runx2') {
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Runx2',]$dCt)
+      } else if (relative_data_inter[n,]$Target.Name=='SOX9') {
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='SOX9',]$dCt)
+      } else if (relative_data_inter[n,]$Target.Name=='Col10a1'){
+        ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col10a1',]$dCt)
       }
       ddCt_list<-c(ddCt_list,ddCt)
     }
@@ -229,18 +229,32 @@ server <- function(input, output, session){
     relative_data_inter$ddCt<-ddCt_list
     relative_data_inter$exprs<-exprs
     group_list<-NULL
-    for (n in 1:nrow(relative_data_inter)){
-      if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
-        group<-'WT Undiff'
-      } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
-        group<-'WT Diff'
-      } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
-        group<-'MU Undiff'
-      } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
-        group<-'MU Diff'
+
+      for (n in 1:nrow(relative_data_inter)){
+        if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
+          group<-'NC D0'
+        } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
+          group<-'NC D14'
+        } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
+          group<-'NC D21'
+        } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
+          group<-'AB D0'
+        } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
+          group<-'AB D14'
+        } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
+          group<-'AB D21'
+        } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
+          group<-'WT Undiff'
+        } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
+          group<-'WT Diff'
+        } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
+          group<-'MU Undiff'
+        } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
+          group<-'MU Diff'
+        }
+        group_list<-c(group_list, group)
       }
-      group_list<-c(group_list, group)
-    }
+    
     relative_data_inter$Group<-group_list
     return(relative_data_inter[order(relative_data_inter$Target.Name,relative_data_inter$Group,decreasing = TRUE),])
   })
@@ -306,29 +320,28 @@ server <- function(input, output, session){
   })
   output$relative_inter_1_plot<-renderPlot({
     source('global.R', local = TRUE)
-    dot_plot(input$show_results[1])
+    draw_plot(input$show_results[1],input$plottype)   
   })
   output$relative_inter_2_plot<-renderPlot({
     source('global.R', local = TRUE)
-    dot_plot(input$show_results[2])
+    draw_plot(input$show_results[2],input$plottype) 
   })
   output$relative_inter_3_plot<-renderPlot({
     source('global.R', local = TRUE)
-    dot_plot(input$show_results[3])
+    draw_plot(input$show_results[3],input$plottype) 
   })
   output$relative_inter_4_plot<-renderPlot({
     source('global.R', local = TRUE)
-    dot_plot(input$show_results[4])
+    draw_plot(input$show_results[4],input$plottype) 
   })
   output$relative_inter_5_plot<-renderPlot({
     source('global.R', local = TRUE)
-    dot_plot(input$show_results[5])
+    draw_plot(input$show_results[5],input$plottype) 
   })
   output$relative_inter_6_plot<-renderPlot({
     source('global.R', local = TRUE)
-    dot_plot(input$show_results[6])
+    draw_plot(input$show_results[6],input$plottype) 
   })
-  
 }
 
 shinyApp(ui, server)
