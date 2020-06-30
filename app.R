@@ -5,8 +5,9 @@ library(readxl)
 library(xlsx)
 library(ggplot2)
 library(rapportools)
+library(plotly)
 
-
+source('global.R', local = TRUE)
 ui<- dashboardPage(
   dashboardHeader(title = 'Bowl\'s project'),
   dashboardSidebar(
@@ -16,7 +17,6 @@ ui<- dashboardPage(
     ),
     fileInput(inputId = 'file',label = 'Select input file:',multiple = FALSE),
     tableOutput('filename'),
-    selectInput(inputId = 'data_type', label = 'Please select data type:', choices = c('Time Course','WT/MU'), selected = 'Time Course'),
     tags$hr(),
     actionButton(inputId = "analyze", label = "Get data")
   ),
@@ -90,7 +90,9 @@ ui<- dashboardPage(
                                   plotOutput('relative_inter_6_plot'),
                                   tags$hr(),
                          ),
-                         tabPanel('Statistic', icon = icon('signal'))
+                         tabPanel('Statistic', icon = icon('signal'),
+                                  uiOutput("plots")
+                                  )
               )
       )
       
@@ -183,7 +185,7 @@ server <- function(input, output, session){
   })
   
   Ctrls.Mean.dCt_table<-eventReactive(input$analyze_ctrl,{
-
+    
     Samples.Name<-row.names(table(relative_data_intra()$Sample.Name))
     genes<-row.names(table(relative_data_intra()$Target.Name))
     Ctrl.Samples<-input$controls
@@ -229,31 +231,31 @@ server <- function(input, output, session){
     relative_data_inter$ddCt<-ddCt_list
     relative_data_inter$exprs<-exprs
     group_list<-NULL
-
-      for (n in 1:nrow(relative_data_inter)){
-        if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
-          group<-'NC D0'
-        } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
-          group<-'NC D14'
-        } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
-          group<-'NC D21'
-        } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
-          group<-'AB D0'
-        } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
-          group<-'AB D14'
-        } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
-          group<-'AB D21'
-        } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
-          group<-'WT Undiff'
-        } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
-          group<-'WT Diff'
-        } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
-          group<-'MU Undiff'
-        } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
-          group<-'MU Diff'
-        }
-        group_list<-c(group_list, group)
+    
+    for (n in 1:nrow(relative_data_inter)){
+      if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
+        group<-'NC D0'
+      } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
+        group<-'NC D14'
+      } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
+        group<-'NC D21'
+      } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
+        group<-'AB D0'
+      } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
+        group<-'AB D14'
+      } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
+        group<-'AB D21'
+      } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
+        group<-'WT Undiff'
+      } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
+        group<-'WT Diff'
+      } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
+        group<-'MU Undiff'
+      } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
+        group<-'MU Diff'
       }
+      group_list<-c(group_list, group)
+    }
     
     relative_data_inter$Group<-group_list
     return(relative_data_inter[order(relative_data_inter$Target.Name,relative_data_inter$Group,decreasing = TRUE),])
@@ -320,10 +322,10 @@ server <- function(input, output, session){
   })
   output$relative_inter_1_plot<-renderPlot({
     source('global.R', local = TRUE)
-    draw_plot(input$show_results[1],input$plottype)   
+    draw_plot(input$show_results[1],input$plottype)  
   })
   output$relative_inter_2_plot<-renderPlot({
-    source('global.R', local = TRUE)
+   source('global.R', local = TRUE)
     draw_plot(input$show_results[2],input$plottype) 
   })
   output$relative_inter_3_plot<-renderPlot({
@@ -342,6 +344,10 @@ server <- function(input, output, session){
     source('global.R', local = TRUE)
     draw_plot(input$show_results[6],input$plottype) 
   })
+  output$plots<-renderUI({
+
+  })
+  
 }
 
 shinyApp(ui, server)
