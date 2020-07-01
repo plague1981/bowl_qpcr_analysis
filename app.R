@@ -40,13 +40,7 @@ ui<- dashboardPage(
               tags$h3('2. Select and upload your file on the Sidebar')
       ),
       tabItem(tabName = 'start',
-              navbarPage(title ='Data analysis', 
-                         tabPanel('Raw data', icon = icon('file'),
-                                  tableOutput('rawdata')
-                         ),
-                         tabPanel('Calibration', icon = icon('calendar'),
-                                  tableOutput('calibration')
-                         ),
+              navbarPage(title ='Data analysis',
                          tabPanel('Set up Ctrls', icon = icon('calendar-plus'),
                                   box(width = 4,
                                       uiOutput("controls")
@@ -57,11 +51,19 @@ ui<- dashboardPage(
                                       actionButton(inputId = "analyze_ctrl", label = "Analyze")
                                   ),
                                   box(width = 4,
-                                      tableOutput('ctrls')
+                                      tableOutput('ctrls'),
+                                      uiOutput("show_results"),
+                                      radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'), selected = 'Box-plot')
                                   )
                          ),
+                         tabPanel('Raw data', icon = icon('file'),
+                                  tableOutput('rawdata')
+                         ),
+                         tabPanel('Calibration', icon = icon('calendar'),
+                                  tableOutput('calibration')
+                         ),
                          tabPanel('Relative Data', icon = icon('calendar-check'),
-                                  uiOutput("show_results"),
+                                  
                                   tableOutput('relative_inter_test'),
                                   tableOutput('relative_inter_1'),
                                   tags$hr(),
@@ -76,22 +78,22 @@ ui<- dashboardPage(
                                   tableOutput('relative_inter_6'),
                          ),
                          tabPanel('Plots', icon = icon('chart-bar'),
-                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'),selected = 'Dot-plot'),
-                                  plotOutput('relative_inter_1_plot'),
-                                  tags$hr(),
-                                  plotOutput('relative_inter_2_plot'),
-                                  tags$hr(),
-                                  plotOutput('relative_inter_3_plot'),
-                                  tags$hr(),
-                                  plotOutput('relative_inter_4_plot'),
-                                  tags$hr(),
-                                  plotOutput('relative_inter_5_plot'),
-                                  tags$hr(),
-                                  plotOutput('relative_inter_6_plot'),
-                                  tags$hr(),
+                                  uiOutput("plotly"),
+                                  #plotOutput('relative_inter_1_plot'),
+                                  #tags$hr(),
+                                  #plotOutput('relative_inter_2_plot'),
+                                  #tags$hr(),
+                                  #plotOutput('relative_inter_3_plot'),
+                                  #tags$hr(),
+                                  #plotOutput('relative_inter_4_plot'),
+                                  #tags$hr(),
+                                  #plotOutput('relative_inter_5_plot'),
+                                  #tags$hr(),
+                                  #plotOutput('relative_inter_6_plot'),
+                                  #tags$hr(),
                          ),
-                         tabPanel('Statistic', icon = icon('signal'),
-                                  uiOutput("plotly")
+                         tabPanel('Statistic', icon = icon('signal')
+                                  
                          )
               )
       )
@@ -321,30 +323,30 @@ server <- function(input, output, session){
     source('global.R', local = TRUE)
     gene_expression_table(input$show_results[6])
   })
-  output$relative_inter_1_plot<-renderPlot({
-    source('global.R', local = TRUE)
-    draw_plot(input$show_results[1],input$plottype)  
-  })
-  output$relative_inter_2_plot<-renderPlot({
-    source('global.R', local = TRUE)
-    draw_plot(input$show_results[2],input$plottype) 
-  })
-  output$relative_inter_3_plot<-renderPlot({
-    source('global.R', local = TRUE)
-    draw_plot(input$show_results[3],input$plottype) 
-  })
-  output$relative_inter_4_plot<-renderPlot({
-    source('global.R', local = TRUE)
-    draw_plot(input$show_results[4],input$plottype) 
-  })
-  output$relative_inter_5_plot<-renderPlot({
-    source('global.R', local = TRUE)
-    draw_plot(input$show_results[5],input$plottype) 
-  })
-  output$relative_inter_6_plot<-renderPlot({
-    source('global.R', local = TRUE)
-    draw_plot(input$show_results[6],input$plottype) 
-  })
+#  output$relative_inter_1_plot<-renderPlot({
+#    source('global.R', local = TRUE)
+#   draw_plot(input$show_results[1],input$plottype)  
+#  })
+# output$relative_inter_2_plot<-renderPlot({
+#   source('global.R', local = TRUE)
+#   draw_plot(input$show_results[2],input$plottype) 
+# })
+#  output$relative_inter_3_plot<-renderPlot({
+#    source('global.R', local = TRUE)
+#    draw_plot(input$show_results[3],input$plottype) 
+# })
+#  output$relative_inter_4_plot<-renderPlot({
+#   source('global.R', local = TRUE)
+#   draw_plot(input$show_results[4],input$plottype) 
+#  })
+#  output$relative_inter_5_plot<-renderPlot({
+#    source('global.R', local = TRUE)
+#    draw_plot(input$show_results[5],input$plottype) 
+#  })
+#  output$relative_inter_6_plot<-renderPlot({
+#    source('global.R', local = TRUE)
+#    draw_plot(input$show_results[6],input$plottype) 
+#  })
   output$plotly<-renderUI({
     
     plot_output_list <- lapply(1:length(input$show_results), function(i) {
@@ -353,9 +355,9 @@ server <- function(input, output, session){
       plot_output_object <- renderPlotly({
         source('global.R', local = TRUE)
         draw_plot(input$show_results[i],input$plottype) 
-       # only necessary when adding other plotly commands like add_trace 
       })
     })
+    # only necessary when adding other plotly commands like add_trace
     # for each element set the height (here went something wrong with plotlyOutput)
     #for(i in 1:length(plot_output_list)){
     #  attr(plot_output_list[[i]],'outputArgs') <- list(height="850px")
