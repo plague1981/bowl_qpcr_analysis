@@ -1,5 +1,3 @@
-
-
 gene_expression_table <- function (input){
   if (is.empty(input)){
     return(NULL)
@@ -27,24 +25,22 @@ box_plot<-function(input){
 
 dot_plot<-function(input){
   p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,], aes(x=Group, y=exprs)) +
-    geom_dotplot(binaxis='y', stackdir='center',) +
+    geom_dotplot(binaxis='y',stackdir='center') +
     ggtitle(label = input) +
     scale_x_discrete(name ="Groups", 
                      limits= rev(row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group))) )+
-    stat_summary(fun.data=data_summary, 
-                 geom='pointrange', color="red")
+    stat_summary(fun.data=data_summary, geom='pointrange', color="red")
   return(p)
 }
 
 dot_box_plot<-function(input){
   p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,], aes(x=Group, y=exprs)) +
     geom_boxplot() +
-    geom_dotplot(binaxis='y', stackdir='center',) +
-    ggtitle(label = input) +
+    geom_dotplot(binaxis='y', stackdir='center') +
+    ggtitle(label = input) + 
     scale_x_discrete(name ="Groups", 
                      limits= rev(row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group))) )+
-    stat_summary(fun.data=data_summary, 
-                 geom='pointrange', color="red")
+    stat_summary(fun.data=data_summary, geom='pointrange', color="red")
   return(p)
 }
 
