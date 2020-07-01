@@ -91,8 +91,8 @@ ui<- dashboardPage(
                                   tags$hr(),
                          ),
                          tabPanel('Statistic', icon = icon('signal'),
-                                  uiOutput("plots")
-                                  )
+                                  uiOutput("plotly")
+                         )
               )
       )
       
@@ -270,6 +270,7 @@ server <- function(input, output, session){
     groups <-row.names(table(relative_data_inter()$Target.Name))
     checkboxGroupInput("show_results", "Look up genes in groups:", groups, selected = groups)
   })
+  # Session
   observe({
     x <- input$controls
     
@@ -325,7 +326,7 @@ server <- function(input, output, session){
     draw_plot(input$show_results[1],input$plottype)  
   })
   output$relative_inter_2_plot<-renderPlot({
-   source('global.R', local = TRUE)
+    source('global.R', local = TRUE)
     draw_plot(input$show_results[2],input$plottype) 
   })
   output$relative_inter_3_plot<-renderPlot({
@@ -344,10 +345,24 @@ server <- function(input, output, session){
     source('global.R', local = TRUE)
     draw_plot(input$show_results[6],input$plottype) 
   })
-  output$plots<-renderUI({
-
+  output$plotly<-renderUI({
+    
+    plot_output_list <- lapply(1:length(input$show_results), function(i) {
+      plotname <- paste0("plotly", i)
+      plot_output_object <- plotlyOutput(plotname)
+      plot_output_object <- renderPlotly({
+        source('global.R', local = TRUE)
+        draw_plot(input$show_results[i],input$plottype) 
+       # only necessary when adding other plotly commands like add_trace 
+      })
+    })
+    # for each element set the height (here went something wrong with plotlyOutput)
+    #for(i in 1:length(plot_output_list)){
+    #  attr(plot_output_list[[i]],'outputArgs') <- list(height="850px")
+    #}
+    # return
+    return(plot_output_list)
   })
-  
 }
 
 shinyApp(ui, server)
