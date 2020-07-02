@@ -53,7 +53,7 @@ ui<- dashboardPage(
                                   box(width = 4,
                                       tableOutput('ctrls'),
                                       uiOutput("show_results"),
-                                      radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'), selected = 'Box-plot')
+                                      radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'), selected = 'Dot-plot')
                                   )
                          ),
                          tabPanel('Raw data', icon = icon('file'),
