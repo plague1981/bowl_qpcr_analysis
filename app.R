@@ -79,18 +79,6 @@ ui<- dashboardPage(
                          ),
                          tabPanel('Plots', icon = icon('chart-bar'),
                                   uiOutput("plotly"),
-                                  #plotOutput('relative_inter_1_plot'),
-                                  #tags$hr(),
-                                  #plotOutput('relative_inter_2_plot'),
-                                  #tags$hr(),
-                                  #plotOutput('relative_inter_3_plot'),
-                                  #tags$hr(),
-                                  #plotOutput('relative_inter_4_plot'),
-                                  #tags$hr(),
-                                  #plotOutput('relative_inter_5_plot'),
-                                  #tags$hr(),
-                                  #plotOutput('relative_inter_6_plot'),
-                                  #tags$hr(),
                          ),
                          tabPanel('Statistic', icon = icon('signal')
                                   
@@ -323,30 +311,6 @@ server <- function(input, output, session){
     source('global.R', local = TRUE)
     gene_expression_table(input$show_results[6])
   })
-#  output$relative_inter_1_plot<-renderPlot({
-#    source('global.R', local = TRUE)
-#   draw_plot(input$show_results[1],input$plottype)  
-#  })
-# output$relative_inter_2_plot<-renderPlot({
-#   source('global.R', local = TRUE)
-#   draw_plot(input$show_results[2],input$plottype) 
-# })
-#  output$relative_inter_3_plot<-renderPlot({
-#    source('global.R', local = TRUE)
-#    draw_plot(input$show_results[3],input$plottype) 
-# })
-#  output$relative_inter_4_plot<-renderPlot({
-#   source('global.R', local = TRUE)
-#   draw_plot(input$show_results[4],input$plottype) 
-#  })
-#  output$relative_inter_5_plot<-renderPlot({
-#    source('global.R', local = TRUE)
-#    draw_plot(input$show_results[5],input$plottype) 
-#  })
-#  output$relative_inter_6_plot<-renderPlot({
-#    source('global.R', local = TRUE)
-#    draw_plot(input$show_results[6],input$plottype) 
-#  })
   output$plotly<-renderUI({
     
     plot_output_list <- lapply(1:length(input$show_results), function(i) {
@@ -357,12 +321,6 @@ server <- function(input, output, session){
         draw_plot(input$show_results[i],input$plottype) 
       })
     })
-    # only necessary when adding other plotly commands like add_trace
-    # for each element set the height (here went something wrong with plotlyOutput)
-    #for(i in 1:length(plot_output_list)){
-    #  attr(plot_output_list[[i]],'outputArgs') <- list(height="850px")
-    #}
-    # return
     return(plot_output_list)
   })
 }
