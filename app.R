@@ -166,7 +166,7 @@ server <- function(input, output, session){
       tablename <- paste0("table", i)
       table_output_object <- plotlyOutput(tablename)
       table_output_object <- renderTable({
-      target.gene<-group_by(relative_samples_data[relative_samples_data$Target.Name==input$show_results[i],], Group)
+      target.gene<-group_by(relative_data_inter()[relative_data_inter()$Target.Name==input$show_results[i],], Group)
       df<-summarize(target.gene, count = n(), 
               Max=max(exprs) , Min=min(exprs),
               Q1=quantile(exprs)[2], Q2=quantile(exprs)[3], Q3=quantile(exprs)[4],
