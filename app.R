@@ -48,12 +48,11 @@ ui<- dashboardPage(
                                   box(width = 4,
                                       checkboxGroupInput("selected_controls", "Selected Control"),
                                       selectInput('internal_control', 'Please select internal control', choices = c('GAPDH','ACTIN','HPRT'), selected = 'GAPDH'),
+                                      uiOutput("show_results"),
                                       actionButton(inputId = "analyze_ctrl", label = "Analyze")
                                   ),
                                   box(width = 4,
-                                      tableOutput('ctrls'),
-                                      uiOutput("show_results"),
-                                      radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'), selected = 'Dot-plot')
+                                      tableOutput('ctrls')
                                   )
                          ),
                          tabPanel('Raw data', icon = icon('file'),
@@ -66,10 +65,11 @@ ui<- dashboardPage(
                                   uiOutput('tables'),
                          ),
                          tabPanel('Plots', icon = icon('chart-bar'),
+                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'), selected = 'Dot-plot'),
                                   uiOutput("plotly"),
                          ),
-                         tabPanel('Statistic', icon = icon('signal'),
-                                  tableOutput('summary1')
+                         tabPanel('Summary', icon = icon('signal'),
+                                  uiOutput('summary')
                                   
                          )
               )
@@ -140,7 +140,7 @@ server <- function(input, output, session){
     Ctrls.Mean.dCt_table()
   })
   output$tables<-renderUI({
-    plot_output_list <- lapply(1:length(input$show_results), function(i) {
+    table_output_list <- lapply(1:length(input$show_results), function(i) {
       tablename <- paste0("table", i)
       table_output_object <- plotlyOutput(tablename)
       table_output_object <- renderTable({
@@ -148,7 +148,7 @@ server <- function(input, output, session){
         gene_expression_table(input$show_results[i]) 
       })
     })
-    return(plot_output_list)
+    return(table_output_list)
   })
   output$plotly<-renderUI({
     plot_output_list <- lapply(1:length(input$show_results), function(i) {
@@ -161,8 +161,21 @@ server <- function(input, output, session){
     })
     return(plot_output_list)
   })
-  output$summary1<-renderTable({
-    
+  output$summary<-renderUI({
+    table_output_list <- lapply(1:length(input$show_results), function(i) {
+      tablename <- paste0("table", i)
+      table_output_object <- plotlyOutput(tablename)
+      table_output_object <- renderTable({
+      target.gene<-group_by(relative_samples_data[relative_samples_data$Target.Name==input$show_results[i],], Group)
+      df<-summarize(target.gene, count = n(), 
+              Max=max(exprs) , Min=min(exprs),
+              Q1=quantile(exprs)[2], Q2=quantile(exprs)[3], Q3=quantile(exprs)[4],
+              Mean = mean(exprs, na.rm = T), SD = sd(exprs, na.rm = T))
+      names(df)<-c(input$show_results[i], 'Number','Max','Min','Q1','Q2','Q3', 'Mean','SD')
+      return(df)
+      })
+    })
+    return(table_output_list)
   })
 }
 
