@@ -8,18 +8,14 @@ read_data<-function(input){
 }
 # get all sample data
 get_all_sample_data <- function (readfile){
+  readfile<-readfile[!(readfile$CT=='Undetermined'),]
   all_sample_data<-NULL
   for (sample_name in row.names(table(readfile[,'Sample.Name']))){
-    sample_A<-readfile[readfile$Sample.Name==sample_name,]
+
+    sample_A<-newdata[newdata$Sample.Name==sample_name,]
     gene_data<-NULL
     for (gene in rownames(table(sample_A$Target.Name))){
-      gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][1,c(2,3,5)])
-    }
-    
-    new_Ct.Mean_list<-NULL
-    lq_gene<-NULL
-    for (gene in rownames(table(sample_A$Target.Name))){
-      if (sample_A[sample_A$Target.Name==gene, ]$Ct.Threshold[1]>0.1){
+      if (nrow(sample_A[sample_A$Target.Name==gene, ])==3 & sample_A[sample_A$Target.Name==gene, ]$Ct.SD[1]>0.1) {
         x<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])
         y<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])
         z<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3])
@@ -28,27 +24,16 @@ get_all_sample_data <- function (readfile){
         c<-abs(x-z)
         if (min(c(a,b,c))==a){
           new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]))/2
-          new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+          sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
         } else if (min(c(a,b,c))==b){
           new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
-          new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+          sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
         } else if (min(c(a,b,c))==c){
           new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
-          new_Ct.Mean_list<-c(new_Ct.Mean_list,new_Ct.Mean)
+          sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
         }
-        lq_gene<-c(lq_gene,gene)
       } 
-    }
-    df<-NULL
-    df$new_Ct_table<-data.frame(lq_gene)
-    df<-cbind(df, data.frame(new_Ct.Mean_list))
-    
-    for (n in 1:nrow(df)){
-      for (m in 1:nrow(gene_data)){
-        if (gene_data[m,'Target.Name']==df[n,'lq_gene']){
-          gene_data[m,'Ct.Mean']<-df[n,'new_Ct.Mean_list']
-        }
-      }
+      gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][1,c(2,3,5)])
     }
     all_sample_data<-rbind(all_sample_data,gene_data)
   }
@@ -60,12 +45,24 @@ get_relative_samples_data<-function(all_sample_data){
   relative_samples_data<-NULL
   for (sample_name in row.names(table(all_sample_data$Sample.Name))){
     A_sample_data<-all_sample_data[all_sample_data$Sample.Name==sample_name,]
-    Crtl_Ct<-A_sample_data[A_sample_data$Target.Name==input$internal_control,]$Ct.Mean
+    if (!is.empty(A_sample_data[A_sample_data$Target.Name==input$internal_control,]$Ct.Mean)){
+      internal_control_gene <-input$internal_control
+      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name==internal_control_gene,]$Ct.Mean
+    } else if (!is.empty(A_sample_data[A_sample_data$Target.Name=='GAPDH',]$Ct.Mean)){
+      internal_control_gene <- 'GAPDH'
+      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name==internal_control_gene,]$Ct.Mean
+    } else if (!is.empty(A_sample_data[A_sample_data$Target.Name=='ACTIN',]$Ct.Mean)){
+      internal_control_gene <- 'ACTIN'
+      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name==internal_control_gene,]$Ct.Mean
+    } else if (!is.empty(A_sample_data[A_sample_data$Target.Name=='HPRT',]$Ct.Mean)){
+      internal_control_gene <- 'HPRT'
+      Crtl_Ct<-A_sample_data[A_sample_data$Target.Name==internal_control_gene,]$Ct.Mean
+    }
     genes<-NULL
     genes_dCt<-NULL
     relative_sample_data<-NULL
     for (gene in A_sample_data$Target.Name){
-      if (gene!=input$internal_control){
+      if (gene!=internal_control_gene){
         Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
         gene_dCt<-(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
         genes<-c(genes,gene)
@@ -120,7 +117,7 @@ get_relative_data_inter<-function(relative_data_intra){
       ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='SOX9',]$dCt)
     } else if (relative_data_inter[n,]$Target.Name=='Col10a1'){
       ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col10a1',]$dCt)
-    }
+    } 
     ddCt_list<-c(ddCt_list,ddCt)
   }
   
@@ -129,33 +126,45 @@ get_relative_data_inter<-function(relative_data_intra){
   relative_data_inter$exprs<-exprs
   group_list<-NULL
   # sorting treatment group
-  for (n in 1:nrow(relative_data_inter)){
-    if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
-      group<-'NC D0'
-    } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
-      group<-'NC D14'
-    } else if (grepl('^NC',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
-      group<-'NC D21'
-    } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D0$',relative_data_inter$Sample.Name[n])){
-      group<-'AB D0'
-    } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D14$',relative_data_inter$Sample.Name[n])){
-      group<-'AB D14'
-    } else if (grepl('^AB',relative_data_inter$Sample.Name[n])& grepl('D21$',relative_data_inter$Sample.Name[n])){
-      group<-'AB D21'
-    } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
-      group<-'WT Undiff'
-    } else if (grepl('^wt',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
-      group<-'WT Diff'
-    } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Undiffer$',relative_data_inter$Sample.Name[n])){
-      group<-'MU Undiff'
-    } else if (grepl('^mu',relative_data_inter$Sample.Name[n])& grepl('Differ$',relative_data_inter$Sample.Name[n])){
-      group<-'MU Diff'
-    }
-    group_list<-c(group_list, group)
+  for (n in 1:length(relative_data_inter$Sample.Name)){
+    ngroup <- paste(strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][1], strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][3], sep = ' ')
+    group_list<-c(group_list,ngroup)
   }
   
   relative_data_inter$Group<-group_list
   return(relative_data_inter[order(relative_data_inter$Target.Name,relative_data_inter$Group,decreasing = TRUE),])
+}
+# set up control groups
+set_control_groups<- function(groups){
+  Ctrl.Samples<-NULL
+  for (n in 1:length(groups)){
+    ngroup <- paste(strsplit(groups[n],' ')[[1]][1], strsplit(groups[n],' ')[[1]][3], sep = ' ')
+    if (grepl('^NC',ngroup)&grepl('D0$',ngroup)){
+      Ctrl.Sample<-groups[n]
+      Ctrl.Samples<-c(Ctrl.Samples,Ctrl.Sample)
+    } else if (grepl('^wt',ngroup)&grepl('Undiffer$',ngroup)){
+      Ctrl.Sample<-groups[n]
+      Ctrl.Samples<-c(Ctrl.Samples,Ctrl.Sample)
+    }
+  }
+  return(Ctrl.Samples)
+}
+# detect internal gene
+detect_internal_gene<- function(readfile){
+  genes.name <-row.names(table(readfile$Target.Name))
+  for (n in 1:length(genes.name)){
+    if (genes.name[n]=='GAPDH'){
+      internal_control<-'GAPDH'
+      break()
+    } else if (genes.name[n]=='ACTIN'){
+      internal_control<-'ACTIN'
+      break()
+    } else if (genes.name[n]=='HPRT'){
+      internal_control<-'HPRT'
+      break()
+    } else next()
+  }
+  return(internal_control)
 }
 
 gene_expression_table <- function (input){
@@ -188,7 +197,7 @@ dot_plot<-function(input){
     geom_count() +
     ggtitle(label = input) +
     scale_x_discrete(name ="Groups", 
-                     limits= rev(row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group))) )+
+                     limits= row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group)) )+
     stat_summary(fun.data=data_summary, 
                  geom='pointrange', color="red")
   return(ggplotly(p))
