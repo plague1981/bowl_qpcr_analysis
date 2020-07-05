@@ -11,7 +11,6 @@ get_all_sample_data <- function (readfile){
   readfile<-readfile[!(readfile$CT=='Undetermined'),]
   all_sample_data<-NULL
   for (sample_name in row.names(table(readfile[,'Sample.Name']))){
-
     sample_A<-newdata[newdata$Sample.Name==sample_name,]
     gene_data<-NULL
     for (gene in rownames(table(sample_A$Target.Name))){
@@ -127,7 +126,9 @@ get_relative_data_inter<-function(relative_data_intra){
   group_list<-NULL
   # sorting treatment group
   for (n in 1:length(relative_data_inter$Sample.Name)){
-    ngroup <- paste(strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][1], strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][3], sep = ' ')
+    prefix<-strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][1]
+    suffix<-gsub("(?<![0-9])([0-9])(?![0-9])", "0\\1", strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][3], perl = TRUE)
+    ngroup <- paste(prefix, suffix, sep = ' ')
     group_list<-c(group_list,ngroup)
   }
   
