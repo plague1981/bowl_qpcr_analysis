@@ -6,6 +6,8 @@ library(xlsx)
 library(ggplot2)
 library(rapportools)
 library(plotly)
+library(dplyr)
+library(stringr)
 
 source('global.R', local = TRUE)
 ui<- dashboardPage(
@@ -47,12 +49,13 @@ ui<- dashboardPage(
                                   ),
                                   box(width = 4,
                                       checkboxGroupInput("selected_controls", "Selected Control"),
-                                      selectInput('internal_control', 'Please select internal control', choices = c('GAPDH','ACTIN','HPRT'), selected = 'GAPDH'),
+                                      uiOutput('internal_control'),
                                       uiOutput("show_results"),
                                       actionButton(inputId = "analyze_ctrl", label = "Analyze")
                                   ),
-                                  box(width = 4,
-                                      tableOutput('ctrls')
+                                  box(width = 4, title = 'Control data:',
+                                      tableOutput('ctrls'),
+                                      downloadLink("download", "Download xlsx file")
                                   )
                          ),
                          tabPanel('Raw data', icon = icon('file'),
@@ -101,16 +104,20 @@ server <- function(input, output, session){
   relative_data_inter<-eventReactive(input$analyze_ctrl,{
     get_relative_data_inter(relative_data_intra())
   })
-  
   # Output
   # Create choosable control list
   output$controls <- renderUI({
     groups <-row.names(table(readfile()$Sample.Name))
-    checkboxGroupInput("controls", "Choose Controls:", groups)
+    Ctrl.Samples<-set_control_groups(groups)
+    checkboxGroupInput("controls", "Choose Controls:", groups, selected = Ctrl.Samples)
   })
   output$show_results <- renderUI({
     groups <-row.names(table(relative_data_inter()$Target.Name))
     checkboxGroupInput("show_results", "Look up genes in groups:", groups, selected = groups)
+  })
+  output$internal_control<-renderUI({
+    control <-detect_internal_gene(readfile())
+    selectInput('internal_control', 'Please select internal control', choices = c('GAPDH','ACTIN','HPRT'), selected = control)
   })
   # Session
   observe({
@@ -139,6 +146,7 @@ server <- function(input, output, session){
   output$ctrls<-renderTable({
     Ctrls.Mean.dCt_table()
   })
+
   output$tables<-renderUI({
     table_output_list <- lapply(1:length(input$show_results), function(i) {
       tablename <- paste0("table", i)
@@ -169,7 +177,7 @@ server <- function(input, output, session){
       target.gene<-group_by(relative_data_inter()[relative_data_inter()$Target.Name==input$show_results[i],], Group)
       df<-summarize(target.gene, count = n(), 
               Max=max(exprs) , Min=min(exprs),
-              Q1=quantile(exprs)[2], Q2=quantile(exprs)[3], Q3=quantile(exprs)[4],
+              Q1=quantile(exprs, na.rm = T)[2], Q2=quantile(exprs, na.rm = T)[3], Q3=quantile(exprs, na.rm = T)[4],
               Mean = mean(exprs, na.rm = T), SD = sd(exprs, na.rm = T))
       names(df)<-c(input$show_results[i], 'Number','Max','Min','Q1','Q2','Q3', 'Mean','SD')
       return(df)
@@ -177,6 +185,16 @@ server <- function(input, output, session){
     })
     return(table_output_list)
   })
+  output$download <- downloadHandler(
+    filename = function() {
+      paste0(input$file[1], ".summary.xlsx")
+    },
+    content = function(file) {
+        write.xlsx(readfile(), sheetName = 'raw data',file)
+        write.xlsx(Ctrls.Mean.dCt_table(), sheetName = 'Control',file, append = TRUE)
+        write.xlsx(all_sample_data(), sheetName = 'Calibration',file, append = TRUE)
+        write.xlsx(relative_data_inter(), sheetName = 'Relative exprs',file, append = TRUE)
+    })
 }
 
 shinyApp(ui, server)
