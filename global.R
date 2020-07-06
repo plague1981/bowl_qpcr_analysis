@@ -11,7 +11,7 @@ get_all_sample_data <- function (readfile){
   readfile<-readfile[!(readfile$CT=='Undetermined'),]
   all_sample_data<-NULL
   for (sample_name in row.names(table(readfile[,'Sample.Name']))){
-    sample_A<-newdata[newdata$Sample.Name==sample_name,]
+    sample_A<-readfile[readfile$Sample.Name==sample_name,]
     gene_data<-NULL
     for (gene in rownames(table(sample_A$Target.Name))){
       if (nrow(sample_A[sample_A$Target.Name==gene, ])==3 & sample_A[sample_A$Target.Name==gene, ]$Ct.SD[1]>0.1) {
@@ -30,7 +30,7 @@ get_all_sample_data <- function (readfile){
         } else if (min(c(a,b,c))==c){
           new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
           sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
-        }
+        }  
       } 
       gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][1,c(2,3,5)])
     }
@@ -63,7 +63,7 @@ get_relative_samples_data<-function(all_sample_data){
     for (gene in A_sample_data$Target.Name){
       if (gene!=internal_control_gene){
         Gene_Ct<-A_sample_data[A_sample_data$Target.Name==gene,]$Ct.Mean
-        gene_dCt<-(-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct)))
+        gene_dCt<-(as.numeric(Gene_Ct)-as.numeric(Crtl_Ct))
         genes<-c(genes,gene)
         genes_dCt<-c(genes_dCt,gene_dCt)
       }
@@ -102,25 +102,14 @@ get_relative_data_inter<-function(relative_data_intra){
   ddCt_list<-NULL
   # sorting gene group
   for (n in 1:nrow(relative_data_inter)){
-    if (relative_data_inter[n,]$Target.Name=='BSP'){
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='BSP',]$dCt)
-    } else if (relative_data_inter[n,]$Target.Name=='Col1a1') {
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col1a1',]$dCt)
-    } else if (relative_data_inter[n,]$Target.Name=='Col2a1') {
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col2a1',]$dCt)
-    } else if (relative_data_inter[n,]$Target.Name=='OSX') {
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='OSX',]$dCt)
-    } else if (relative_data_inter[n,]$Target.Name=='Runx2') {
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Runx2',]$dCt)
-    } else if (relative_data_inter[n,]$Target.Name=='SOX9') {
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='SOX9',]$dCt)
-    } else if (relative_data_inter[n,]$Target.Name=='Col10a1'){
-      ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name=='Col10a1',]$dCt)
-    } 
+    #for (m in 1:nrow(table(Ctrls.Mean.dCt_table()))){
+      #ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name==Ctrls.Mean.dCt_table()$Target.Name[m],]$dCt)
+    ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name==relative_data_inter[n,]$Target.Name,'dCt'])
+    #}
     ddCt_list<-c(ddCt_list,ddCt)
   }
   
-  exprs<-2^ddCt_list
+  exprs<-2^(-ddCt_list)
   relative_data_inter$ddCt<-ddCt_list
   relative_data_inter$exprs<-exprs
   group_list<-NULL
