@@ -7,7 +7,7 @@ library(ggplot2)
 library(rapportools)
 library(plotly)
 library(dplyr)
-library(stringr)
+
 
 source('global.R', local = TRUE)
 ui<- dashboardPage(
