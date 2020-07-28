@@ -6,6 +6,45 @@ read_data<-function(input){
   file2table<-data.frame(file2table)[,c(1,3,4,8,9,10,15,23)]
   return(file2table)
 }
+get_filtered_data <- function (readfile){
+    readfile<-readfile[!(readfile$CT=='Undetermined'),]
+    filtered_data<-NULL
+    for (sample_name in row.names(table(readfile[,'Sample.Name']))){
+      sample_A<-readfile[readfile$Sample.Name==sample_name,]
+      gene_data<-NULL
+      for (gene in rownames(table(sample_A$Target.Name))){
+        x<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])
+        y<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])
+        z<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3])
+        a<-abs(x-y)
+        b<-abs(y-z)
+        c<-abs(x-z)
+        d<-(max(c(x,y,z))-median(c(x,y,z))/median(c(x,y,z))-min(c(x,y,z)))
+        if (nrow(sample_A[sample_A$Target.Name==gene, ])==3 & sample_A[sample_A$Target.Name==gene, ]$Ct.SD[1]<0.1){
+          gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ])
+        } else if (0.9<d & d<1.1){
+          gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ])
+        } else if (nrow(sample_A[sample_A$Target.Name==gene, ])==3 & sample_A[sample_A$Target.Name==gene, ]$Ct.SD[1]>0.1) {
+            if (min(c(a,b,c))==a){
+              new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]))/2
+              sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
+              gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][c(1,2),])
+            } else if (min(c(a,b,c))==b){
+              new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
+              sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
+              gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][c(2,3),])
+            } else if (min(c(a,b,c))==c){
+              new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
+              sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
+              gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][c(1,3),])
+            }  
+        } 
+      }
+      filtered_data<-rbind(filtered_data,gene_data)
+    }
+    return(filtered_data)
+  }
+
 # get all sample data
 get_all_sample_data <- function (readfile){
   readfile<-readfile[!(readfile$CT=='Undetermined'),]
@@ -14,24 +53,6 @@ get_all_sample_data <- function (readfile){
     sample_A<-readfile[readfile$Sample.Name==sample_name,]
     gene_data<-NULL
     for (gene in rownames(table(sample_A$Target.Name))){
-      if (nrow(sample_A[sample_A$Target.Name==gene, ])==3 & sample_A[sample_A$Target.Name==gene, ]$Ct.SD[1]>0.1) {
-        x<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])
-        y<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])
-        z<-as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3])
-        a<-abs(x-y)
-        b<-abs(y-z)
-        c<-abs(x-z)
-        if (min(c(a,b,c))==a){
-          new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2]))/2
-          sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
-        } else if (min(c(a,b,c))==b){
-          new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[2])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
-          sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
-        } else if (min(c(a,b,c))==c){
-          new_Ct.Mean<-(as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[1])+as.numeric(sample_A[sample_A$Target.Name==gene,]$CT[3]))/2
-          sample_A[sample_A$Target.Name==gene, ][1,5]<-new_Ct.Mean
-        }  
-      } 
       gene_data<-rbind(gene_data, sample_A[sample_A$Target.Name==gene, ][1,c(2,3,5)])
     }
     all_sample_data<-rbind(all_sample_data,gene_data)
@@ -102,25 +123,28 @@ get_relative_data_inter<-function(relative_data_intra){
   ddCt_list<-NULL
   # sorting gene group
   for (n in 1:nrow(relative_data_inter)){
-    #for (m in 1:nrow(table(Ctrls.Mean.dCt_table()))){
-      #ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name==Ctrls.Mean.dCt_table()$Target.Name[m],]$dCt)
     ddCt<-(relative_data_inter[n,'dCt']-Ctrls.Mean.dCt_table()[Ctrls.Mean.dCt_table()$Target.Name==relative_data_inter[n,]$Target.Name,'dCt'])
-    #}
+
     ddCt_list<-c(ddCt_list,ddCt)
   }
   
   exprs<-2^(-ddCt_list)
   relative_data_inter$ddCt<-ddCt_list
   relative_data_inter$exprs<-exprs
+  treatment_list<-NULL
+  dose_list<-NULL
   group_list<-NULL
   # sorting treatment group
   for (n in 1:length(relative_data_inter$Sample.Name)){
     prefix<-strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][1]
     suffix<-gsub("(?<![0-9])([0-9])(?![0-9])", "0\\1", strsplit(relative_data_inter$Sample.Name[n],' ')[[1]][3], perl = TRUE)
     ngroup <- paste(prefix, suffix, sep = ' ')
+    treatment_list<-c(treatment_list,prefix)
+    dose_list<-c(dose_list,suffix)
     group_list<-c(group_list,ngroup)
   }
-  
+  relative_data_inter$Treatment<-treatment_list
+  relative_data_inter$Dose<-dose_list
   relative_data_inter$Group<-group_list
   return(relative_data_inter[order(relative_data_inter$Target.Name,relative_data_inter$Group,decreasing = TRUE),])
 }
@@ -176,7 +200,7 @@ box_plot<-function(input){
     geom_boxplot() +
     ggtitle(label = input) +
     scale_x_discrete(name ="Groups", 
-                     limits= rev(row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group))) )+
+                     limits= row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group)) )+
     stat_summary(fun.data=data_summary, 
                  geom='pointrange', color="red")
   return(p)
@@ -184,33 +208,55 @@ box_plot<-function(input){
 
 dot_plot<-function(input){
   p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,], aes(x=Group, y=exprs)) +
-    geom_count() +
+    geom_count(stat="identity") +
     ggtitle(label = input) +
     scale_x_discrete(name ="Groups", 
                      limits= row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group)) )+
     stat_summary(fun.data=data_summary, 
-                 geom='pointrange', color="red")
+                 geom='errorbar', color="red")
   return(ggplotly(p))
 }
 
 dot_box_plot<-function(input){
-  p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,], aes(x=Group, y=exprs)) +
+  p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,],aes(x=Group, y=exprs)) +
     geom_boxplot() +
     geom_count()  +
     ggtitle(label = input) +
     scale_x_discrete(name ="Groups", 
-                     limits= rev(row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group))) )+
+                     limits= row.names(table(relative_data_inter()[relative_data_inter()$Target.Name==input,]$Group)) )+
     stat_summary(fun.data=data_summary, 
-                 geom='pointrange', color="red")
+                 geom='errorbar', color="red")
+  return(p)
+}
+
+bar_plot<-function(input){
+  p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,], aes(x=Dose, y=exprs,fill=factor(Treatment, levels = rev(levels(factor(Treatment)))))) +
+    geom_bar(position = "dodge", stat = "summary") +
+    ggtitle(label = input) +
+    stat_summary(fun.data=data_summary, 
+                 geom='errorbar', color="red",position = position_dodge(.9))
+  return(p)
+}
+dot_bar_plot<-function(input){
+  p<-ggplot(data = relative_data_inter()[relative_data_inter()$Target.Name==input,], aes(x=Dose, y=exprs,fill=factor(Treatment, levels = rev(levels(factor(Treatment)))))) +
+    geom_bar(position = "dodge", stat = "summary") +
+    geom_count(position = position_dodge(.9))  +
+    ggtitle(label = input) +
+    stat_summary(fun.data=data_summary, 
+                 geom='errorbar', color="red",position = position_dodge(.9))
   return(p)
 }
 
 draw_plot <- function(input,plottype) {
-  if (plottype=='Dot-plot'){
+  if (plottype=='Dot-Bar-plot'){
+    dot_bar_plot(input)
+  } else if (plottype=='Dot-plot'){
     dot_plot(input)
   } else if (plottype=='Box-plot'){
     box_plot(input)
   } else if (plottype=='Dot-Box-plot'){
     dot_box_plot(input)
+  } else if (plottype=='Bar-plot'){
+    bar_plot (input)
   }
 }
