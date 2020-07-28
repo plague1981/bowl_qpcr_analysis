@@ -61,6 +61,11 @@ ui<- dashboardPage(
                          tabPanel('Raw data', icon = icon('file'),
                                   tableOutput('rawdata')
                          ),
+                         tabPanel('filtered', icon = icon('calendar'),
+                                  tags$p('In this table, some ineligible data was filtered out whose Ct.SD > 0.1 and the ratio of CT among individual samples is greater than 1.1 or lesser than 0.9.'),
+                                  tags$br(),
+                                  tableOutput('filtered')
+                         ),
                          tabPanel('Calibration', icon = icon('calendar'),
                                   tableOutput('calibration')
                          ),
@@ -68,7 +73,7 @@ ui<- dashboardPage(
                                   uiOutput('tables'),
                          ),
                          tabPanel('Plots', icon = icon('chart-bar'),
-                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-plot', 'Box-plot','Dot-Box-plot'), selected = 'Dot-plot'),
+                                  radioButtons(inputId = 'plottype',label = 'Please select output plot type:',choices = c('Dot-Bar-plot','Dot-plot', 'Bar-plot','Box-plot','Dot-Box-plot' ), selected = 'Dot-Bar-plot'),
                                   uiOutput("plotly"),
                          ),
                          tabPanel('Summary', icon = icon('signal'),
@@ -90,8 +95,11 @@ server <- function(input, output, session){
   readfile<- eventReactive(input$analyze,{
     read_data(input$file$datapath)
   })
+  filtered_data<-eventReactive(input$analyze,{
+    get_filtered_data(readfile())
+  })
   all_sample_data<-eventReactive(input$analyze,{
-    get_all_sample_data(readfile())
+    get_all_sample_data(filtered_data())
   })
   relative_data_intra<-eventReactive(input$analyze_ctrl,{
     get_relative_samples_data(all_sample_data())
@@ -104,6 +112,7 @@ server <- function(input, output, session){
   relative_data_inter<-eventReactive(input$analyze_ctrl,{
     get_relative_data_inter(relative_data_intra())
   })
+
   # Output
   # Create choosable control list
   output$controls <- renderUI({
@@ -140,6 +149,9 @@ server <- function(input, output, session){
   output$rawdata<-renderTable({
     readfile()
   })
+  output$filtered<-renderTable({
+    filtered_data()
+  })  
   output$calibration<-renderTable({
     all_sample_data()
   })
@@ -191,6 +203,7 @@ server <- function(input, output, session){
     },
     content = function(file) {
         write.xlsx(readfile(), sheetName = 'raw data',file)
+        write.xlsx(filtered_data(), sheetName = 'filtered',file)
         write.xlsx(Ctrls.Mean.dCt_table(), sheetName = 'Control',file, append = TRUE)
         write.xlsx(all_sample_data(), sheetName = 'Calibration',file, append = TRUE)
         write.xlsx(relative_data_inter(), sheetName = 'Relative exprs',file, append = TRUE)
