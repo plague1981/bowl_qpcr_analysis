@@ -1,3 +1,8 @@
+packages<-c('shiny','shinythemes','shinydashboard','shinycssloaders','readxl','xlsx','ggplot2','rapportools','plotly','dplyr')
+for (package in packages){
+  if(package %in% rownames(installed.packages()) == FALSE) {
+    install.packages(package)}
+}
 library(shiny)
 library(shinythemes)
 library(shinydashboard)
